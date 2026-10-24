@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cuộc Đua Giải Mật Mã - GDQPAN 11 - Trịnh Hoài Đức</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            military: {
+              900: '#0A1C16',
+              800: '#102C25',
+              700: '#1E3E34',
+              600: '#304B3B',
+              500: '#4A6B56',
+              gold: '#F5D77B',
+              goldLight: '#FFF0B3',
+              cream: '#F5F3E8',
+              red: '#D9534F',
+              green: '#5CB85C'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Courier New', 'monospace']
+          },
+          animation: {
+            'radar-spin': 'spin 4s linear infinite',
+            'pulse-slow': 'pulse 3s infinite'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel for JSX compilation in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    body {
+      background-color: #0A1C16;
+      color: #F5F3E8;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0A1C16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #304B3B;
+      border-radius: 4px;
+    }
+
+    .radar-sweep {
+      background: conic-gradient(from 0deg, rgba(245, 215, 123, 0.15) 0deg, transparent 60deg, transparent 360deg);
+      border-radius: 50%;
+      animation: spin 3s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between">
+
+  <div id="root"></div>
+
+
+<!-- BẢN THỬ NGHIỆM: Chưa có phân quyền giáo viên/học sinh ở phía máy chủ. Không dùng để chấm điểm chính thức. -->
+  <!-- Firebase Realtime Database: online synchronization -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCg7dwBkbt3BxgFFijs6ABS8uNUPm9bSvk",
+      authDomain: "giai-mat-ma-8-doi.firebaseapp.com",
+      databaseURL: "https://giai-mat-ma-8-doi-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "giai-mat-ma-8-doi",
+      storageBucket: "giai-mat-ma-8-doi.firebasestorage.app",
+      messagingSenderId: "68030214393",
+      appId: "1:68030214393:web:37cb71e645ff7588d27228"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const realtimeDB = firebase.database();
+    const firebaseAuth = firebase.auth();
+  </script>
+
+
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef}=React;
+    const INITIAL_QUESTIONS = [
+      {
+        id: 1,
+        codeWord: "THÁO",
+        title: "Bộ phận số 1",
+        question: "Đây là bộ phận nào của súng tiểu liên AK?",
+        options: ["Hộp tiếp đạn", "Báng súng", "Nắp hộp khóa nòng", "Ống dẫn thoi"],
+        correctIndex: 0,
+        svgType: "magazine",
+        customImgUrl: ""
+      },
+      {
+        id: 2,
+        codeWord: "ĐÚNG",
+        title: "Bộ phận số 2",
+        question: "Bộ phận có dạng lò xo dài trong ảnh được gọi là gì?",
+        options: ["Bộ phận đẩy về", "Bộ phận ngắm", "Báng súng", "Hộp tiếp đạn"],
+        correctIndex: 0,
+        svgType: "spring",
+        customImgUrl: ""
+      },
+      {
+        id: 3,
+        codeWord: "TRÌNH",
+        title: "Bộ phận số 3",
+        question: "Đây là bộ phận nào của súng AK?",
+        options: ["Ống dẫn thoi và ốp lót tay trên", "Báng súng", "Hộp tiếp đạn", "Nắp hộp khóa nòng"],
+        correctIndex: 0,
+        svgType: "gasTube",
+        customImgUrl: ""
+      },
+      {
+        id: 4,
+        codeWord: "TỰ",
+        title: "Bộ phận số 4",
+        question: "Bộ phận bằng gỗ phía sau súng có tên là gì?",
+        options: ["Báng súng", "Tay cầm", "Ốp lót tay trên", "Đầu ngắm"],
+        correctIndex: 0,
+        svgType: "buttstock",
+        customImgUrl: ""
+      },
+      {
+        id: 5,
+        codeWord: "LẮP",
+        title: "Bộ phận số 5",
+        question: "Chi tiết gỗ bao quanh phần phía trước súng thuộc bộ phận nào?",
+        options: ["Bệ khóa nòng và thoi đẩy", "Ốp lót tay", "Báng súng", "Hộp tiếp đạn"],
+        correctIndex: 0,
+        svgType: "handguard",
+        customImgUrl: ""
+      },
+      {
+        id: 6,
+        codeWord: "ĐÚNG",
+        title: "Bộ phận số 6",
+        question: "Bộ phận định hướng cho đầu đạn bay ra được gọi là gì?",
+        options: ["Nòng súng", "Tay cầm", "Đầu ngắm", "Hộp tiếp đạn"],
+        correctIndex: 0,
+        svgType: "pistolGrip",
+        customImgUrl: ""
+      },
+      {
+        id: 7,
+        codeWord: "QUY",
+        title: "Bộ phận số 7",
+        question: "Bộ phận kim loại dài có dạng nắp đậy trong ảnh là gì?",
+        options: ["Nắp hộp khóa nòng", "Báng súng", "Hộp tiếp đạn", "Ống dẫn thoi"],
+        correctIndex: 0,
+        svgType: "receiverCover",
+        customImgUrl: ""
+      },
+      {
+        id: 8,
+        codeWord: "TẮC",
+        title: "Bộ phận số 8",
+        question: "Bộ phận làm nòng súng, các bộ phận khác liên kết với nhau và chứa bộ phận cò, khóa nòng là gì?",
+        options: ["Hộp khóa nòng", "Nắp hộp khóa nòng", "Báng súng", "Ống dẫn thoi"],
+        correctIndex: 0,
+        svgType: "safety",
+        customImgUrl: ""
+      }
+    ];
+    const DEFAULT_TEAMS = [
+      { id: 1, name: "Đội 1 - Biệt Kích", color: "#EF4444", icon: "fa-shield-halved", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 2, name: "Đội 2 - Trinh Sát", color: "#F59E0B", icon: "fa-crosshairs", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 3, name: "Đội 3 - Pháo Thủ", color: "#10B981", icon: "fa-bomb", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 4, name: "Đội 4 - Tiên Phong", color: "#3B82F6", icon: "fa-flag", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 5, name: "Đội 5 - Đặc Công", color: "#8B5CF6", icon: "fa-user-ninja", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 6, name: "Đội 6 - Xạ Thủ", color: "#EC4899", icon: "fa-bullseye", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 7, name: "Đội 7 - Thiết Giáp", color: "#14B8A6", icon: "fa-truck-monster", score: 0, totalTime: 0, answers: {}, unlockedWords: [] },
+      { id: 8, name: "Đội 8 - Dù Bay", color: "#F97316", icon: "fa-parachute-box", score: 0, totalTime: 0, answers: {}, unlockedWords: [] }
+    ];
+    function AKPartSVG({ type, customImgUrl }) {
+      if (customImgUrl) {
+        return (
+          <div className="w-full h-48 bg-military-900/90 rounded-lg border-2 border-military-gold/40 flex items-center justify-center p-2 overflow-hidden shadow-inner relative">
+            <img 
+              src={customImgUrl} 
+              alt="Bộ phận AK" 
+              className="max-h-full max-w-full object-contain rounded"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://placehold.co/400x300/102C25/F5D77B?text=Loi+Anh";
+              }}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="w-full h-48 bg-military-900/90 rounded-lg border-2 border-military-gold/40 flex flex-col items-center justify-center relative overflow-hidden shadow-inner p-4">
+          <div className="absolute top-2 left-2 text-[10px] font-mono text-military-gold/60 flex items-center gap-1">
+            <i className="fa-solid fa-microchip"></i> SƠ ĐỒ KỸ THUẬT AK-47
+          </div>
+
+          {type === 'magazine' && (
+            <svg viewBox="0 0 200 160" className="w-32 h-32">
+              <path d="M 70,20 C 100,25 110,80 120,140 L 80,145 C 70,90 60,35 45,25 Z" fill="#2A3831" stroke="#F5D77B" strokeWidth="3" />
+              <line x1="60" y1="40" x2="85" y2="45" stroke="#F5D77B" strokeWidth="2" />
+              <line x1="65" y1="65" x2="92" y2="70" stroke="#F5D77B" strokeWidth="2" />
+              <line x1="70" y1="90" x2="98" y2="95" stroke="#F5D77B" strokeWidth="2" />
+            </svg>
+          )}
+
+          {type === 'spring' && (
+            <svg viewBox="0 0 240 100" className="w-44 h-24">
+              <path d="M 20,50 L 30,30 L 40,70 L 50,30 L 60,70 L 70,30 L 80,70 L 90,30 L 100,70 L 110,30 L 120,70 L 130,30 L 140,70 L 150,30 L 160,70 L 170,30 L 180,70 L 190,30 L 200,50" fill="none" stroke="#F5D77B" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+
+          {type === 'gasTube' && (
+            <svg viewBox="0 0 220 120" className="w-44 h-24">
+              <rect x="30" y="35" width="160" height="24" rx="4" fill="#304B3B" stroke="#F5D77B" strokeWidth="2" />
+              <path d="M 40,60 L 180,60 L 170,85 L 50,85 Z" fill="#8B4513" stroke="#F5D77B" strokeWidth="2" />
+            </svg>
+          )}
+
+          {type === 'buttstock' && (
+            <svg viewBox="0 0 200 120" className="w-40 h-24">
+              <path d="M 20,30 L 100,45 L 180,35 C 185,60 185,85 180,100 L 100,75 L 20,70 Z" fill="#A0522D" stroke="#F5D77B" strokeWidth="3" />
+            </svg>
+          )}
+
+          {type === 'handguard' && (
+            <svg viewBox="0 0 200 100" className="w-40 h-24">
+              <path d="M 30,35 L 170,30 L 160,75 L 40,75 Z" fill="#8B4513" stroke="#F5D77B" strokeWidth="3" />
+            </svg>
+          )}
+
+          {type === 'pistolGrip' && (
+            <svg viewBox="0 0 120 160" className="w-20 h-24">
+              <path d="M 40,20 L 80,25 L 65,130 L 25,120 Z" fill="#8B4513" stroke="#F5D77B" strokeWidth="3" />
+            </svg>
+          )}
+
+          {type === 'receiverCover' && (
+            <svg viewBox="0 0 240 90" className="w-44 h-20">
+              <path d="M 20,55 C 30,25 210,25 220,55 L 210,65 L 30,65 Z" fill="#102C25" stroke="#F5D77B" strokeWidth="3" />
+            </svg>
+          )}
+
+          {type === 'safety' && (
+            <svg viewBox="0 0 160 160" className="w-24 h-24">
+              <circle cx="80" cy="80" r="60" fill="#102C25" stroke="#F5D77B" strokeWidth="4" />
+              <text x="80" y="100" textAnchor="middle" fill="#F5D77B" fontSize="36" fontWeight="bold">!</text>
+            </svg>
+          )}
+        </div>
+      );
+    }
+const SECRET='THÁO ĐÚNG TRÌNH TỰ – LẮP ĐÚNG QUY TẮC';
+const params=new URLSearchParams(location.search);
+const isTeacherPage=params.get('mode')==='teacher';
+const initialRoom=(params.get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+const newCode=()=>Array.from({length:6},()=> 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+function App(){
+ const [user,setUser]=useState(null),[authReady,setAuthReady]=useState(false),[authError,setAuthError]=useState('');
+ const [email,setEmail]=useState(''),[password,setPassword]=useState('');
+ const [room,setRoom]=useState(initialRoom|| (isTeacherPage?newCode():''));
+ const [roomInput,setRoomInput]=useState('');
+ const [data,setData]=useState(null),[dbError,setDbError]=useState('');
+ const [teamId,setTeamId]=useState(null),[joined,setJoined]=useState(false);
+ const [choice,setChoice]=useState(null),[seconds,setSeconds]=useState(30),[submitted,setSubmitted]=useState(false);
+ const [sessionId,setSessionId]=useState(0);
+ const [showImages,setShowImages]=useState(false);
+ const [notice,setNotice]=useState('');
+ const [serverOffset,setServerOffset]=useState(0);
+ useEffect(()=>{const ref=realtimeDB.ref('.info/serverTimeOffset');const cb=s=>setServerOffset(Number(s.val()||0));ref.on('value',cb);return()=>ref.off('value',cb)},[]);
+ const [editing,setEditing]=useState(null);
+ const roomRef=useMemo(()=>room?realtimeDB.ref('rooms/'+room):null,[room]);
+ useEffect(()=>{const unsub=firebaseAuth.onAuthStateChanged(async u=>{
+   if(!isTeacherPage && !u){try{await firebaseAuth.signInAnonymously();}catch(e){setAuthError(e.message)}return;}
+   setUser(u);setAuthReady(true);
+ });return unsub;},[]);
+ useEffect(()=>{if(!user||!roomRef)return;setDbError('');setData(null);
+   const ok=s=>setData(s.val()),bad=e=>setDbError(e.message);
+   roomRef.on('value',ok,bad);return()=>roomRef.off('value',ok);
+ },[user,roomRef]);
+ const isTeacher=!!(isTeacherPage&&user&&!user.isAnonymous);
+ // Do not dereference Firebase room data before the first snapshot arrives.
+ const control=data?.control||{round:1,phase:'waiting',secret:false};
+ const [clockTick,setClockTick]=useState(0);
+ useEffect(()=>{const id=setInterval(()=>setClockTick(x=>x+1),250);return()=>clearInterval(id)},[]);
+ const remaining=control.startedAt?Math.max(0,Math.ceil((Number(control.startedAt)+30000-(Date.now()+serverOffset))/1000)):30;
+ const bonusClaim=(data && data.bonusClaim && Number(data.bonusClaim.session)===Number(data.session)) ? data.bonusClaim : null;
+ const round=Number(control.round||1);
+ const q=(data?.questions&&data.questions[String(round)])||INITIAL_QUESTIONS[round-1];
+ const submissions=Object.values(data?.submissions||{}).flatMap(x=>Object.values(x||{}));
+ const roundSubmissions=submissions.filter(s=>s && Number(s.round)===round && Number(s.session||0)===Number(data?.session||0));
+ const mySubmission=user&&data?.submissions?.[String(round)]?.[user.uid]&&Number(data.submissions[String(round)][user.uid].session||0)===Number(data?.session||0)?data.submissions[String(round)][user.uid]:null;
+ const answered=!!mySubmission;
+ const teacherUrl=location.origin+location.pathname+'?mode=teacher';
+ const studentUrl=location.origin+location.pathname+'?room='+encodeURIComponent(room);
+ useEffect(()=>{if(!isTeacher||!room)return;localStorage.setItem('ak_teacher_room',room)},[isTeacher,room]);
+ useEffect(()=>{if(!isTeacher||!room)return;const target=document.getElementById('qr-display');if(!target)return;
+  target.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(studentUrl);
+ },[isTeacher,room,studentUrl,data]);
+ useEffect(()=>{setChoice(null);setSeconds(30);setSubmitted(false)},[round,data?.session]);
+ // The common Firebase timestamp drives the student timer.
+ const sendAnswer=async (index)=>{
+  if(!user||!roomRef||!joined||!teamId||answered||control.phase!=='answer'||remaining===0)return;
+  setSubmitted(true);setChoice(index);
+  try{
+   const payload={uid:user.uid,teamId:Number(teamId),round,session:Number(data?.session||0),option:Number(index),elapsed:30-remaining,createdAt:firebase.database.ServerValue.TIMESTAMP};
+   const ref=roomRef.child('submissions/'+round+'/'+user.uid);
+   const res=await ref.transaction(old=>old?undefined:payload);
+   if(!res.committed)setNotice('Đội đã gửi đáp án câu này trước đó.');
+  }catch(e){setNotice('Không thể gửi đáp án: '+e.message)}finally{setSubmitted(false)}
+ };
+ const initRoom=async()=>{
+  if(!isTeacher||!roomRef)return;
+  try{await roomRef.transaction(old=>old||{
+   ownerUid:user.uid,createdAt:firebase.database.ServerValue.TIMESTAMP,
+   questions:Object.fromEntries(INITIAL_QUESTIONS.map(x=>[x.id,x])),
+   teams:Object.fromEntries(DEFAULT_TEAMS.map(t=>[t.id,{id:t.id,name:t.name}])),
+   control:{round:1,phase:'waiting',secret:false},session:1,submissions:{},bonusClaim:null
+  });setNotice('Đã tạo phòng học.');}catch(e){setNotice(e.message)}
+ };
+ const updateControl=async (next)=>{
+  if(!isTeacher||!roomRef)return;
+  try{await roomRef.child('control').transaction(old=>{
+   if(!old)return;
+   const n=Number(old.round||1);
+   if(next==='start'&&old.phase==='waiting')return {...old,phase:'answer',startedAt:firebase.database.ServerValue.TIMESTAMP};
+   if(next==='review'&&old.phase==='answer')return {...old,phase:'review'};
+   if(next==='reveal'&&old.phase==='review')return {...old,phase:'revealed'};
+   if(next==='advance'&&old.phase==='revealed'&&n<8)return {...old,round:n+1,phase:'waiting',startedAt:null};
+   if(next==='secret'&&old.phase==='revealed'&&n===8)return {...old,secret:true};
+  });}catch(e){setNotice(e.message)}
+ };
+ const claimBonus=async()=>{
+  if(!user||!joined||!teamId||!roomRef||round!==8||control.phase!=='revealed'||control.secret||bonusClaim)return;
+  setSubmitted(true);
+  try{
+   // Transaction on a single shared node: only one team can claim in this test version.
+   const result=await roomRef.child('bonusClaim').transaction(old=>old?undefined:{uid:user.uid,teamId:Number(teamId),session:Number(data?.session||0),createdAt:firebase.database.ServerValue.TIMESTAMP});
+   if(result.committed){setNotice('Đội của bạn giành quyền công bố và nhận 20 điểm!');}
+   else setNotice('Đội khác đã nhấn nhanh hơn.');
+  }catch(e){setNotice('Không thể công bố: '+e.message)}finally{setSubmitted(false)}
+ };
+ const reset=async()=>{if(!isTeacher||!confirm('Xóa kết quả và bắt đầu lại từ câu 1?'))return;
+  try{await roomRef.update({control:{round:1,phase:'waiting',secret:false,startedAt:null},submissions:null,bonusClaim:null,session:Number(data?.session||0)+1});setNotice('Đã bắt đầu lượt thi mới.')}catch(e){setNotice(e.message)}
+ };
+ const uploadImage=(id,file)=>{if(!file||!isTeacher)return;if(file.size>300000){setNotice('Ảnh cần nhỏ hơn 300 KB để phù hợp Realtime Database.');return}
+ const reader=new FileReader();reader.onload=()=>roomRef.child('questions/'+id+'/customImgUrl').set(reader.result).catch(e=>setNotice(e.message));reader.readAsDataURL(file)};
+ const exportCSV=()=>{const rows=[['Đội','Điểm 8 câu','Thưởng công bố','Tổng điểm','Số câu đã trả lời'],...DEFAULT_TEAMS.map(t=>{const a=submissions.filter(s=>s.teamId===t.id&&Number(s.session||0)===Number(data?.session||0));const base=a.reduce((v,s)=>v+scoreAnswer(s),0);const bonus=bonusClaim?.teamId===t.id?20:0;return [t.name,base,bonus,base+bonus,a.length]})];
+ const blob=new Blob(['\ufeff'+rows.map(r=>r.join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Ket_qua_'+room+'.csv';a.click();URL.revokeObjectURL(a.href)};
+ const scoreAnswer=s=>{const question=data?.questions?.[String(s.round)]||INITIAL_QUESTIONS[Number(s.round)-1];if(!question||Number(s.option)!==Number(question.correctIndex))return 0;const sec=Math.max(0,Number(s.elapsed??30));return sec<=5?10:sec<=10?9:sec<=15?8:sec<=20?7:sec<=30?6:5};
+ const scores=DEFAULT_TEAMS.map(t=>{const a=submissions.filter(s=>s.teamId===t.id&&Number(s.session||0)===Number(data?.session||0));return {...t,name:data?.teams?.[String(t.id)]?.name||t.name,score:a.reduce((v,s)=>v+scoreAnswer(s),0)+(bonusClaim?.teamId===t.id?20:0),count:a.length,answeredRound:a.some(s=>Number(s.round)===round)}});
+ const outer='min-h-screen bg-military-900 text-military-cream p-4 md:p-6';
+ const panel='bg-military-800 border border-military-gold/30 rounded-xl p-4 md:p-5 shadow-lg';
+ const goldButton='px-5 py-3 rounded-xl bg-military-gold text-military-900 font-extrabold disabled:opacity-40 disabled:cursor-not-allowed';
+ const mutedButton='px-4 py-2 rounded-lg bg-military-700 border border-military-gold/40 text-military-gold font-semibold disabled:opacity-40';
+ if(!authReady)return <div className={outer}>Đang đăng nhập Firebase... {authError}</div>;
+ if(isTeacherPage&&!isTeacher)return <div className={outer}><div className={panel+' max-w-md mx-auto mt-16'}><h1 className="text-2xl font-bold text-military-gold mb-3">ĐĂNG NHẬP GIÁO VIÊN</h1><p className="text-sm mb-4">Sử dụng tài khoản Email/Password được cấp quyền quản lý trong Firebase.</p><form className="space-y-3" onSubmit={async e=>{e.preventDefault();setAuthError('');try{if(user?.isAnonymous)await firebaseAuth.signOut();await firebaseAuth.signInWithEmailAndPassword(email,password)}catch(err){setAuthError(err.message)}}}><input className="w-full p-3 bg-military-900 rounded border border-military-gold/40" type="email" placeholder="Email giáo viên" value={email} onChange={e=>setEmail(e.target.value)} required/><input className="w-full p-3 bg-military-900 rounded border border-military-gold/40" type="password" placeholder="Mật khẩu" value={password} onChange={e=>setPassword(e.target.value)} required/><button className={goldButton+' w-full'}>Đăng nhập</button></form><p className="text-red-300 mt-3 text-xs">{authError}</p><a className="text-military-gold text-xs underline" href={location.pathname}>Về trang học sinh</a></div></div>;
+ if(!isTeacherPage&&!room)return <div className={outer}><div className={panel+' max-w-md mx-auto mt-16 text-center'}><h1 className="text-xl font-bold text-military-gold mb-4">THAM GIA CUỘC ĐUA GIẢI MẬT MÃ</h1><p className="text-sm mb-4">Quét QR hoặc nhập mã phòng giáo viên cung cấp.</p><input className="w-full p-3 bg-military-900 border border-military-gold/40 rounded-lg mb-3 text-center uppercase" value={roomInput} maxLength={8} onChange={e=>setRoomInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''))} placeholder="MÃ PHÒNG"/><button className={goldButton+' w-full'} disabled={!roomInput} onClick={()=>{setRoom(roomInput);history.replaceState(null,'',location.pathname+'?room='+roomInput)}}>Vào phòng</button></div></div>;
+ if(isTeacher)return <div className={outer}><div className="max-w-7xl mx-auto space-y-5">
+ <header className={panel+' flex flex-wrap items-center justify-between gap-4'}><div><h1 className="text-xl font-black text-military-gold">CUỘC ĐUA GIẢI MẬT MÃ – GDQPAN 11</h1><p className="text-xs opacity-70">GV: Phan Hoài Như | Trường TH–THCS–THPT Trịnh Hoài Đức (IGC)</p><p className="text-xs text-emerald-300 mt-2">BẢNG ĐIỀU KHIỂN GIÁO VIÊN • Phòng: {room}</p></div><button className={mutedButton} onClick={()=>firebaseAuth.signOut()}>Đăng xuất</button></header>
+ {dbError&&<div className="text-red-300">Lỗi Firebase: {dbError}</div>}{notice&&<div className="text-yellow-300 text-sm">{notice}</div>}
+ {!data?<div className={panel}><h2 className="text-lg font-bold text-military-gold mb-3">Khởi tạo phòng chơi</h2><p className="text-sm mb-3">Phòng {room} chưa tồn tại hoặc bạn chưa được cấp quyền.</p><button className={goldButton} onClick={initRoom}>Tạo phòng {room}</button></div>:<>
+ <div className="grid lg:grid-cols-3 gap-4"><section className={panel}><h2 className="text-military-gold font-bold mb-3">MÃ QR DÀNH CHO HỌC SINH</h2><img id="qr-display" className="w-44 h-44 rounded-lg mx-auto bg-military-gold p-2" alt="QR tham gia"/><p className="text-center font-mono font-bold text-military-gold mt-2">{room}</p><p className="text-xs break-all mt-2">{studentUrl}</p><button className={mutedButton+' mt-3 w-full'} onClick={()=>navigator.clipboard.writeText(studentUrl)}>Sao chép liên kết học sinh</button></section>
+ <section className={panel+' lg:col-span-2'}><div className="flex justify-between flex-wrap gap-2 mb-3"><h2 className="font-bold text-military-gold">ĐIỀU KHIỂN CÂU {round}/8</h2><div className="flex items-center flex-wrap gap-3"><span className={'inline-flex items-center gap-2 px-4 py-2 rounded-xl border font-black text-xl tabular-nums '+(control.phase==='answer'?(remaining<=5?'bg-red-900/60 text-red-200 border-red-400':remaining<=10?'bg-amber-900/60 text-amber-200 border-amber-400':'bg-military-900 text-military-gold border-military-gold/50'):'bg-military-900 text-military-gold border-military-gold/30')}><i className="fa-solid fa-stopwatch"></i>{control.phase==='answer'?remaining+'s':control.phase==='waiting'?'30s (chờ)': 'Đã dừng'}</span><span className="text-xs">{{waiting:'Chờ giáo viên mở câu',answer:'Các đội đang trả lời',review:'Giáo viên chữa đáp án',revealed:'Đã công bố từ khóa'}[control.phase]||'Chờ'}</span></div></div><div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">{Array.from({length:8},(_,i)=><div key={i} className={'p-2 text-center rounded-lg font-bold text-sm '+(i+1===round?'bg-military-gold text-military-900':i+1<round?'bg-emerald-700':'bg-military-900')}>{i+1}</div>)}</div><div className="flex flex-col md:flex-row gap-4 my-3"><div className="md:w-1/3"><AKPartSVG type={q?.svgType} customImgUrl={q?.customImgUrl}/></div><div className="flex-1"><h3 className="font-bold text-lg mb-3">{q?.question}</h3><div className="grid gap-2">{q?.options?.map((o,i)=><div key={i} className={'rounded-lg border p-2 text-sm '+(control.phase!=='answer'&&control.phase!=='waiting'&&Number(q?.correctIndex)===i?'bg-emerald-700 border-emerald-300 font-bold':'bg-military-900 border-military-gold/20')}>{String.fromCharCode(65+i)}. {o} {control.phase!=='answer'&&control.phase!=='waiting'&&Number(q?.correctIndex)===i?'✓ Đáp án đúng':''}</div>)}</div></div></div><p className="text-xs opacity-70 mb-3">Đã nộp câu {round}: {new Set(roundSubmissions.map(s=>s.teamId)).size}/8 đội</p><div className="flex flex-wrap gap-3">{control.phase==='waiting'&&<button className={goldButton} onClick={()=>updateControl('start')}>▶ Bắt đầu câu {round} – 30 giây chung</button>}{control.phase==='answer'&&<button className={goldButton} onClick={()=>updateControl('review')}>📝 Kết thúc trả lời – Chữa đáp án</button>}<button className={goldButton} disabled={control.phase!=='review'} onClick={()=>updateControl('reveal')}>🔑 Công bố từ khóa câu {round}</button>{round<8?<button className={goldButton} disabled={control.phase!=='revealed'} onClick={()=>updateControl('advance')}>➡ Mở câu {round+1} cho 8 đội</button>:<button className={goldButton} disabled={control.phase!=='revealed'||control.secret||!!bonusClaim} onClick={()=>updateControl('secret')}>🔓 GV công bố dự phòng (không thưởng)</button>}</div>{control.phase==='revealed'&&<div className="mt-4 p-4 bg-emerald-800 rounded-lg text-center font-black text-xl">TỪ KHÓA CÂU {round}: {q?.codeWord}</div>}{(control.secret||bonusClaim)&&<div className="mt-4 p-4 bg-yellow-400 rounded-xl text-military-900 font-black text-center text-lg">{SECRET}</div>}</section></div>
+ <section className={panel}><p className="text-xs text-emerald-300 mb-3">Thang điểm: 8 câu × 10 điểm; đội nhấn công bố nhanh nhất nhận +20 điểm. {bonusClaim?'Đội '+bonusClaim.teamId+' đã nhận thưởng.':''}</p><div className="flex flex-wrap justify-between gap-3 mb-4"><h2 className="font-bold text-military-gold">TIẾN ĐỘ VÀ ĐIỂM SỐ 8 ĐỘI</h2><button className={mutedButton} onClick={exportCSV}>Xuất CSV</button></div><div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{scores.map(t=><div key={t.id} className="bg-military-900 rounded-xl p-3 border-l-8 shadow-lg" style={{borderLeftColor:t.color,boxShadow:'inset 0 0 0 1px '+t.color+'55'}}><p className="text-xs font-bold" style={{color:t.color}}><i className={'fa-solid '+t.icon+' mr-2'}></i>{t.name}</p><p className="text-military-gold text-xl font-black mt-1">{t.score} điểm</p><p className="text-xs mt-1 opacity-70">Đã trả lời: {t.count}/8 • Câu hiện tại: {t.answeredRound?'Đã nộp':'Chưa nộp'}</p></div>)}</div></section>
+ <section className={panel}><div className="flex flex-wrap justify-between gap-3"><h2 className="text-military-gold font-bold">QUẢN LÝ HÌNH ẢNH CÂU HỎI</h2><button className={mutedButton} onClick={()=>setShowImages(!showImages)}>{showImages?'Ẩn':'Hiện'} quản lý ảnh</button></div>{showImages&&<div className="grid md:grid-cols-2 gap-4 mt-4">{INITIAL_QUESTIONS.map(x=><div key={x.id} className="bg-military-900 p-3 rounded"><p className="text-sm mb-2">Câu {x.id}</p><input type="file" accept="image/*" onChange={e=>uploadImage(x.id,e.target.files[0])} className="text-xs w-full"/><input className="mt-2 w-full bg-military-800 border rounded p-2 text-xs" placeholder="Hoặc dán URL hình ảnh" value={data.questions?.[String(x.id)]?.customImgUrl||''} onChange={e=>roomRef.child('questions/'+x.id+'/customImgUrl').set(e.target.value).catch(err=>setNotice(err.message))}/></div>)}</div>}</section>
+ <div className="flex justify-end"><button className="px-4 py-2 bg-red-900 border border-red-400 rounded-lg text-sm font-bold" onClick={reset}>Đặt lại cuộc thi</button></div></>}
+ </div></div>;
+ // STUDENT
+ const currentTeam=scores.find(t=>t.id===teamId);
+ const teamStyle=DEFAULT_TEAMS.find(t=>t.id===Number(teamId))||DEFAULT_TEAMS[0];
+ const showResult=control.phase==='review'||control.phase==='revealed';
+ const myAnswerCorrect=answered&&Number(mySubmission?.option)===Number(q?.correctIndex);
+ if(!data)return <div className={outer}><div className={panel+' max-w-md mx-auto mt-12'}><h1 className="text-xl font-bold text-military-gold mb-2">PHÒNG {room}</h1><p>{dbError?'Lỗi truy cập: '+dbError:'Đang chờ giáo viên tạo phòng...'}</p><button className={mutedButton+' mt-3'} onClick={()=>{setRoom('');history.replaceState(null,'',location.pathname)}}>Nhập mã khác</button></div></div>;
+ if(!joined)return <div className={outer}><div className={panel+' max-w-lg mx-auto mt-8 text-center'}><h1 className="text-xl font-black text-military-gold">CHIẾN BINH GIẢI MẬT MÃ</h1><p className="text-sm my-3">Phòng {room} • Chọn đội để tham gia</p><div className="grid grid-cols-2 gap-3 mb-5">{scores.map(t=><button key={t.id} onClick={()=>setTeamId(t.id)} style={{borderColor:t.color,background:teamId===t.id?t.color+'55':t.color+'18'}} className="p-4 rounded-xl border-2 text-sm font-extrabold shadow-lg"><i className={'fa-solid '+t.icon+' text-2xl block mb-2'} style={{color:t.color}}></i>{t.name}</button>)}</div><button className={goldButton+' w-full'} disabled={!teamId} onClick={()=>setJoined(true)}>THAM GIA ĐỘI THI</button><p className="text-xs opacity-60 mt-3">Chỉ giáo viên được điều khiển chuyển câu và công bố mật mã.</p></div></div>;
+ return <div className={outer}><div className="max-w-md mx-auto space-y-4"><header className={panel} style={{borderColor:teamStyle.color,background:'linear-gradient(120deg,'+teamStyle.color+'35,#102C25)'}}><p className="font-extrabold text-lg" style={{color:teamStyle.color}}><i className={'fa-solid '+teamStyle.icon+' mr-3'}></i>{currentTeam?.name}</p><div className="flex justify-between text-sm mt-1"><span>Câu {round}/8</span><span>{currentTeam?.score||0} điểm</span></div></header>
+ {(control.secret||bonusClaim)?<section className={panel+' text-center'}><h2 className="text-xl font-black text-military-gold mb-3">HOÀN THÀNH NHIỆM VỤ!</h2><p className="p-4 bg-yellow-400 text-military-900 rounded-lg font-black">{SECRET}</p><p className="mt-3">{bonusClaim?'Đội '+bonusClaim.teamId+' giành 20 điểm thưởng!':'Giáo viên đã công bố thông điệp.'}</p><p className="mt-3">Điểm của đội: {currentTeam?.score}</p></section>:<>
+ <section className={panel} style={{borderColor:teamStyle.color}}><div className="flex justify-between items-center mb-3"><h2 className="text-military-gold font-bold">CÂU HỎI {round}</h2><span className="font-mono text-military-gold">⏱ {control.phase==='answer'?remaining:control.phase==='waiting'?'30 (chờ)':'Đã dừng'}s</span></div><AKPartSVG type={q?.svgType} customImgUrl={q?.customImgUrl}/><h3 className="text-sm font-semibold mt-3 mb-4">{q?.question}</h3><div className="space-y-2">{q?.options?.map((opt,i)=><button key={i} disabled={answered||submitted||control.phase!=='answer'||remaining===0} onClick={()=>sendAnswer(i)} className={'w-full text-left rounded-lg border p-3 text-sm font-semibold disabled:cursor-not-allowed '+(showResult&&Number(q?.correctIndex)===i?'bg-emerald-700 border-emerald-300 text-white':showResult&&answered&&Number(mySubmission?.option)===i?'bg-red-700 border-red-300 text-white':!showResult&&answered&&Number(mySubmission?.option)===i?'bg-military-gold border-military-gold text-military-900':'bg-military-900 border-military-gold/30')}>{String.fromCharCode(65+i)}. {opt}{showResult&&Number(q?.correctIndex)===i?'  ✓ ĐÁP ÁN ĐÚNG':showResult&&answered&&Number(mySubmission?.option)===i?'  ✕ BẠN ĐÃ CHỌN SAI':''}</button>)}</div>{showResult&&<div role="status" aria-live="polite" className={"mt-4 rounded-xl border-2 p-4 text-center font-extrabold "+(!answered?"bg-slate-700 border-slate-400 text-white":myAnswerCorrect?"bg-emerald-700 border-emerald-300 text-white":"bg-red-700 border-red-300 text-white")}>{!answered?"○ CHƯA NỘP ĐÁP ÁN":myAnswerCorrect?"✓ CHÍNH XÁC! ĐỘI BẠN TRẢ LỜI ĐÚNG":"✕ CHƯA CHÍNH XÁC! ĐỘI BẠN TRẢ LỜI SAI"}<p className="text-sm font-normal mt-2">Đáp án đúng: {String.fromCharCode(65+Number(q?.correctIndex||0))}. {q?.options?.[Number(q?.correctIndex||0)]}</p></div>}</section>
+ {notice&&<p className="text-yellow-300 text-xs">{notice}</p>}
+ {control.phase==='revealed'?<section className={panel+' text-center'}><h2 className="text-emerald-300 font-bold">GIÁO VIÊN ĐÃ CÔNG BỐ TỪ KHÓA</h2><p className="text-3xl text-military-gold font-black my-3">{q?.codeWord}</p>{round===8?<><p className="text-sm mb-3">Tất cả các đội hãy nhấn thật nhanh để giành 20 điểm!</p><button className={goldButton+' w-full'} disabled={!!bonusClaim||submitted} onClick={claimBonus}>🔓 CÔNG BỐ THÔNG ĐIỆP BÍ MẬT (+20 ĐIỂM)</button></>:<p className="text-sm">Đang chờ giáo viên mở câu {round+1}.</p>}</section>:<section className={panel+' text-center'}><p className="text-sm text-military-gold font-semibold">{answered?'ĐÃ GỬI ĐÁP ÁN':control.phase==='waiting'?'CHỜ GIÁO VIÊN MỞ CÂU':control.phase==='review'?'GIÁO VIÊN ĐANG CHỮA BÀI':'ĐANG GIẢI MÃ'}</p><p className="text-xs mt-2">{answered?'Vui lòng chờ giáo viên công bố từ khóa.':remaining===0?'Hết giờ trả lời. Chờ giáo viên công bố từ khóa.':'Bạn chỉ có thể gửi một đáp án cho câu này; chưa hiển thị đúng hoặc sai.'}</p></section>}
+ </>}
+ </div></div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body></html>
